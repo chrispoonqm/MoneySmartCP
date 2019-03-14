@@ -1,0 +1,35 @@
+
+
+
+
+/*Final SQL Query : Answer for Question 1*/
+
+Select 
+  Page_ID,
+  Visit_Date,
+  SUM(Is_New_Session) as Total_User_Sessions
+  
+FROM(
+
+Select *,
+  CASE WHEN Visit_TimeConverted - LastVisit_Time >= (60*10) OR LastVisit_Time IS NULL
+  THEN 1 ELSE 0 END as Is_New_Session /*Tagging all new sessions with '1'*/
+  FROM(
+	Select *,
+		LAG(Visit_TimeConverted) OVER (PARTITION BY PageUser_Key ORDER BY Visit_Time) as LastVisit_Time/* Getting the previous session timestamp partition by PageUser_key*/		
+		FROM 
+		(
+		  SELECT  
+			Page_ID,
+			User_ID,
+	               	Visit_Date,
+        	       	Visit_Time,
+			CAST(Page_ID as CHAR(5)) + CAST(User_ID as CHAR(5)) as PageUser_Key, /*Creating a PageUser Index to be used in LAG Partitioning*/
+			/*concatenating Date and Time and converting into seconds*/			
+			CONVERT(BIGINT, DATEDIFF(SECOND, '1970-01-01 00:00:00', (CONVERT(datetime, VISIT_DATE, 112) + ' ' + CONVERT(datetime, VISIT_TIME, 108)))) as Visit_TimeConverted	
+		  FROM SamplePageViews
+		) Visit_CombinedTime
+       ) LagTimeStamp
+)Final
+Group by Page_ID, Visit_Date
+Order by Page_ID;
